@@ -1,0 +1,4 @@
+.vscode/
+.pio/
+server/node_modules
+server/common.json
