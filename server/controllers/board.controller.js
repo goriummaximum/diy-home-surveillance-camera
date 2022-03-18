@@ -6,7 +6,9 @@ exports.boardProcessing = async (req, res, next) => {
         if(req.session.login){
             res.render('board', {
                 "MQTT_HOST": common['MQTT_HOST'],
-                "MQTT_PORT": common['MQTT_PORT']
+                "MQTT_PORT": common['MQTT_WS_PORT'],
+                "MQTT_USERNAME": common['MQTT_USERNAME'],
+                "MQTT_PASSWORD": common['MQTT_PASSWORD']
             })
         }
         else {

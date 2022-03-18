@@ -6,17 +6,21 @@
 #include <WiFi.h>
 
 //timer
-unsigned long prev_millis = 0;   
+unsigned long prev_millis_take_frame = 0;   
 const long take_frame_interval = 40; //ms
+const long reset_wait_wifi_interval = 30000; //ms
  
+//reset
+bool reset_flag = false;
 
 //LED
 #define FLASH 4
-bool flash_state = true;
+#define PWR_LED 33
+bool flash_state = false;
 
 //WiFi
-const char *ssid = "narhoa"; 
-const char *password = "nhathuduc123";
+const char *ssid = "HOTEL MINH LONG"; 
+const char *password = "55555555";
 WiFiClient wifi_client;
 
 //MQTT
@@ -48,7 +52,7 @@ PubSubClient mqtt_client(wifi_client);
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-bool camera_state = false;
+bool camera_state = true;
 
 void camera_init();
 void wifi_connect();
@@ -59,10 +63,13 @@ void mqtt_publish_frame(camera_fb_t *fb);
 String uint8_array_to_String(uint8_t *buf, size_t len);
 void toggle_flash();
 void take_frame_and_send();
+void reset(bool flag);
 
 void setup() {
     Serial.begin(115200);
     pinMode(FLASH, OUTPUT);
+    pinMode(PWR_LED, OUTPUT);
+    digitalWrite(PWR_LED, LOW);
     camera_init();
     connect();
 }
@@ -75,13 +82,15 @@ void loop() {
     mqtt_client.loop();
 
     take_frame_and_send();
+    toggle_flash();
+    reset(reset_flag);
 }
 
 void take_frame_and_send() {
     if (camera_state == true) {
       unsigned long curr_millis = millis();
-      if (curr_millis - prev_millis >= take_frame_interval) {
-        prev_millis = curr_millis;
+      if (curr_millis - prev_millis_take_frame >= take_frame_interval) {
+        prev_millis_take_frame = curr_millis;
         camera_fb_t *fb = esp_camera_fb_get();
         Serial.println(fb->len);
         mqtt_publish_frame(fb);
@@ -119,7 +128,7 @@ void camera_init()
     //                      for larger pre-allocated frame buffer.
     if(psramFound()){
         config.frame_size = FRAMESIZE_VGA; //FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-        config.jpeg_quality = 12; //Quality of JPEG output. 0-63 lower means higher quality
+        config.jpeg_quality = 17; //Quality of JPEG output. 0-63 lower means higher quality
         config.fb_count = 2;
     } else {
         config.frame_size = FRAMESIZE_VGA;
@@ -131,33 +140,33 @@ void camera_init()
     if (err != ESP_OK)
     {
         Serial.printf("Camera init failed with error 0x%x", err);
-        return;
+        //reset(true);
     }
 
     //frame settings
     sensor_t * s = esp_camera_sensor_get();
-    s->set_brightness(s, 0);     // -2 to 2
-    s->set_contrast(s, 0);       // -2 to 2
-    s->set_saturation(s, 0);     // -2 to 2
-    s->set_special_effect(s, 2); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
-    s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
-    s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
-    s->set_wb_mode(s, 0);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-    s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
-    s->set_aec2(s, 0);           // 0 = disable , 1 = enable
-    s->set_ae_level(s, 0);       // -2 to 2
-    s->set_aec_value(s, 0);    // 0 to 1200
-    s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
-    s->set_agc_gain(s, 0);       // 0 to 30
-    s->set_gainceiling(s, (gainceiling_t)3);  // 0 to 6
-    s->set_bpc(s, 0);            // 0 = disable , 1 = enable
-    s->set_wpc(s, 1);            // 0 = disable , 1 = enable
-    s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
-    s->set_lenc(s, 1);           // 0 = disable , 1 = enable
-    s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
-    s->set_vflip(s, 0);          // 0 = disable , 1 = enable
-    s->set_dcw(s, 1);            // 0 = disable , 1 = enable
-    s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
+    s->set_brightness(s, 1);     // -2 to 2
+    //s->set_contrast(s, 0);       // -2 to 2
+    //s->set_saturation(s, 0);     // -2 to 2
+    //s->set_special_effect(s, 2); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
+    //s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
+    //s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
+    //s->set_wb_mode(s, 0);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    //s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
+    //s->set_aec2(s, 0);           // 0 = disable , 1 = enable
+    //s->set_ae_level(s, 0);       // -2 to 2
+    //s->set_aec_value(s, 0);    // 0 to 1200
+    s->set_gain_ctrl(s, 0);      // 0 = disable , 1 = enable
+    s->set_agc_gain(s, 5);       // 0 to 30
+    s->set_gainceiling(s, (gainceiling_t)4);  // 0 to 6
+    //s->set_bpc(s, 0);            // 0 = disable , 1 = enable
+    //s->set_wpc(s, 1);            // 0 = disable , 1 = enable
+    //s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
+    //s->set_lenc(s, 1);           // 0 = disable , 1 = enable
+    //s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
+    //s->set_vflip(s, 0);          // 0 = disable , 1 = enable
+    //s->set_dcw(s, 1);            // 0 = disable , 1 = enable
+    //s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
 }
 
 void wifi_connect()
@@ -166,26 +175,45 @@ void wifi_connect()
   WiFi.begin(ssid, password);
   Serial.print("Wifi connect to: ");
   Serial.println(ssid);
-
+  
+  bool pwr_led_state = false;
+  unsigned long prev_millis = 0;
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    digitalWrite(PWR_LED, pwr_led_state);
+    pwr_led_state = !pwr_led_state;
+
+    if (millis() - prev_millis >= reset_wait_wifi_interval) {
+      reset(true);
+    }
   }
 
   Serial.println("");
   Serial.println("WiFi connected");
+  digitalWrite(PWR_LED, LOW);
 }
 
 void mqtt_connect()
 {
   mqtt_client.setServer(broker_addr, broker_port);
   Serial.print("\nbroker connecting...");
+
+  bool pwr_led_state = false;
+  unsigned long prev_millis = 0;
   while (!mqtt_client.connect(client_id, mqtt_username, mqtt_password)) {
     Serial.print(".");
     delay(500);
+    digitalWrite(PWR_LED, pwr_led_state);
+    pwr_led_state = !pwr_led_state;
+
+    if (millis() - prev_millis >= reset_wait_wifi_interval) {
+      reset(true);
+    }
   }
 
   Serial.println("\nconnected!");
+  digitalWrite(PWR_LED, LOW);
   
   mqtt_client.subscribe(down_topic);
   mqtt_client.setCallback(message_received);
@@ -214,12 +242,16 @@ void message_received(char* topic, byte* payload, unsigned int length)
     Serial.println(decoded_payload);
     if (!strcmp(decoded_payload, "TOGGLE_FLASH"))
     {   
-        toggle_flash();
+        flash_state = !flash_state;
     }
 
     else if (!strcmp(decoded_payload, "TOGGLE_CAMERA"))
     {
         camera_state = !camera_state;
+    }
+
+    else if (!strcmp(decoded_payload, "RESET")) {
+        reset_flag = true;
     }
     free(decoded_payload);
 }
@@ -234,6 +266,12 @@ String uint8_array_to_String(uint8_t *buf, size_t len) {
 }
 
 void toggle_flash() {
-    flash_state = !flash_state;
     digitalWrite(FLASH, flash_state);
+}
+
+void reset(bool flag) {
+    if (flag == true) {
+      WiFi.disconnect();
+      ESP.restart();
+    }
 }

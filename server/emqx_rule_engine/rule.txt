@@ -1,0 +1,18 @@
+republish:
+SQL:
+    SELECT
+        base64_encode(payload) as payload_base64, timestamp
+    FROM
+        "dalat_survail/esp32cam/up"
+    WHERE
+        1=1
+
+Action:
+    action: republish
+    target_topic: dalat_survail/esp32cam/up/preprocessed
+    target_qos: 0
+    payload_template: 
+        {
+            "timestamp": ${timestamp},
+            "frame": "${payload_base64}"
+        }

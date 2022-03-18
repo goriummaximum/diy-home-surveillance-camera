@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "sudo nodemon ./bin/www"
+    "start": "nodemon ./bin/www & nodemon ./db-store/db-store.js &",
+    "stop": "pkill --signal SIGINT node"
   },
   "author": "",
   "license": "ISC",
@@ -17,7 +18,9 @@
     "express-session": "^1.17.2",
     "express-validator": "^6.14.0",
     "fs": "^0.0.1-security",
+    "http-errors": "^2.0.0",
     "morgan": "^1.10.0",
-    "http-errors": "^2.0.0"
+    "mqtt": "^4.3.7",
+    "pg": "^8.7.3"
   }
 }

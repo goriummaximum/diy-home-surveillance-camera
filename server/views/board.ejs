@@ -16,8 +16,8 @@
             var mqtt_topics_list = [];
             options = {
                 clientId: "esp32cam-user",
-                username: 'anxYQc2AmG8fNcuaWaFA',
-                password: 'xgeVOB89kyEVpHTfgKGg',
+                username: '<%=MQTT_USERNAME %>',
+                password: '<%=MQTT_PASSWORD %>',
                 clean: true
             }
 
@@ -25,8 +25,11 @@
             function mqtt_message_handler(topic, message, packet)
             {
                 try {
-                    var payload = btoa(String.fromCharCode.apply(null, new Uint8Array(message)));
+                    var data = JSON.parse(message);
+                   // var payload = btoa(String.fromCharCode.apply(null, new Uint8Array(data['frame'])));
+                   var payload = data['frame'];
                     document.getElementById("data-payload").src = `data:image/jpeg;base64,${payload}`;
+                    document.getElementById("data-timestamp").innerHTML = time_converter(data['timestamp']);
                 } catch (err) {
                     console.log(err);
                 }
@@ -57,6 +60,10 @@
                 mqtt_publish("dalat_survail/esp32cam/down", "TOGGLE_FLASH");
             }
 
+            function reset_mcu() {
+                mqtt_publish("dalat_survail/esp32cam/down", "RESET");
+            }
+
             function mqtt_publish(topic, msg) {
                 mqtt_client.publish(topic, msg, {
                     qos: 0,
@@ -65,6 +72,11 @@
                 }, (err) => {
                     console.log(err);
                 });
+            }
+
+            function time_converter(UNIX_timestamp){
+                let t = new Date(UNIX_timestamp);
+                return `${t.getDate()}/${t.getMonth()+1}/${t.getFullYear()} ${t.getHours()}(h):${t.getMinutes()}(min):${t.getSeconds()}(s)`;
             }
 
         </script>
@@ -76,15 +88,17 @@
         <div>
             <button type="button" class="btn btn-primary" onclick="toggle_camera()">Play/Pause</button>
             <button type="button" class="btn btn-secondary" onclick="toggle_flash()">LED On/Off</button>
+            <button type="button" class="btn btn-danger" onclick="reset_mcu()">Reset</button>
         </div>
 
         <div>
             <img id="data-payload" src="">
+            <div id="data-timestamp" ></div>
         </div>
 
         <script>
             mqtt_client = mqtt.connect(`ws://${mqtt_server_ip}:${ mqtt_server_port}/mqtt`, options);
-            mqtt_topics_list.push("dalat_survail/esp32cam/up");
+            mqtt_topics_list.push("dalat_survail/esp32cam/up/preprocessed");
             mqtt_client.subscribe(mqtt_topics_list);
             mqtt_client.on('connect', mqtt_connect_handler);
             mqtt_client.on('message', mqtt_message_handler);
