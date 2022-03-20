@@ -53,6 +53,10 @@ PubSubClient mqtt_client(wifi_client);
 #define PCLK_GPIO_NUM     22
 
 bool camera_state = true;
+int frame_quality = 17;
+bool frame_quality_update_flag = false;
+int agc = 5;
+bool agc_update_flag = false;
 
 void camera_init();
 void wifi_connect();
@@ -64,9 +68,11 @@ String uint8_array_to_String(uint8_t *buf, size_t len);
 void toggle_flash();
 void take_frame_and_send();
 void reset(bool flag);
+void set_frame_quality();
+void set_agc();
 
 void setup() {
-    Serial.begin(115200);
+    //Serial.begin(115200);
     pinMode(FLASH, OUTPUT);
     pinMode(PWR_LED, OUTPUT);
     digitalWrite(PWR_LED, LOW);
@@ -84,6 +90,8 @@ void loop() {
     take_frame_and_send();
     toggle_flash();
     reset(reset_flag);
+    set_frame_quality();
+    set_agc();
 }
 
 void take_frame_and_send() {
@@ -92,7 +100,7 @@ void take_frame_and_send() {
       if (curr_millis - prev_millis_take_frame >= take_frame_interval) {
         prev_millis_take_frame = curr_millis;
         camera_fb_t *fb = esp_camera_fb_get();
-        Serial.println(fb->len);
+        //Serial.println(fb->len);
         mqtt_publish_frame(fb);
         esp_camera_fb_return(fb);
       }
@@ -128,7 +136,7 @@ void camera_init()
     //                      for larger pre-allocated frame buffer.
     if(psramFound()){
         config.frame_size = FRAMESIZE_VGA; //FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
-        config.jpeg_quality = 17; //Quality of JPEG output. 0-63 lower means higher quality
+        config.jpeg_quality = frame_quality; //Quality of JPEG output. 0-63 lower means higher quality
         config.fb_count = 2;
     } else {
         config.frame_size = FRAMESIZE_VGA;
@@ -139,7 +147,7 @@ void camera_init()
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK)
     {
-        Serial.printf("Camera init failed with error 0x%x", err);
+        //Serial.printf("Camera init failed with error 0x%x", err);
         //reset(true);
     }
 
@@ -157,8 +165,8 @@ void camera_init()
     //s->set_ae_level(s, 0);       // -2 to 2
     //s->set_aec_value(s, 0);    // 0 to 1200
     s->set_gain_ctrl(s, 0);      // 0 = disable , 1 = enable
-    s->set_agc_gain(s, 5);       // 0 to 30
-    s->set_gainceiling(s, (gainceiling_t)4);  // 0 to 6
+    s->set_agc_gain(s, agc);       // 0 to 30
+    s->set_gainceiling(s, (gainceiling_t)0);  // 0 to 6
     //s->set_bpc(s, 0);            // 0 = disable , 1 = enable
     //s->set_wpc(s, 1);            // 0 = disable , 1 = enable
     //s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
@@ -173,14 +181,14 @@ void wifi_connect()
 {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.print("Wifi connect to: ");
-  Serial.println(ssid);
+  //Serial.print("Wifi connect to: ");
+  //Serial.println(ssid);
   
   bool pwr_led_state = false;
   unsigned long prev_millis = 0;
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    //Serial.print(".");
     digitalWrite(PWR_LED, pwr_led_state);
     pwr_led_state = !pwr_led_state;
 
@@ -189,20 +197,20 @@ void wifi_connect()
     }
   }
 
-  Serial.println("");
-  Serial.println("WiFi connected");
+  //Serial.println("");
+  //Serial.println("WiFi connected");
   digitalWrite(PWR_LED, LOW);
 }
 
 void mqtt_connect()
 {
   mqtt_client.setServer(broker_addr, broker_port);
-  Serial.print("\nbroker connecting...");
+  //Serial.print("\nbroker connecting...");
 
   bool pwr_led_state = false;
   unsigned long prev_millis = 0;
   while (!mqtt_client.connect(client_id, mqtt_username, mqtt_password)) {
-    Serial.print(".");
+    //Serial.print(".");
     delay(500);
     digitalWrite(PWR_LED, pwr_led_state);
     pwr_led_state = !pwr_led_state;
@@ -212,7 +220,7 @@ void mqtt_connect()
     }
   }
 
-  Serial.println("\nconnected!");
+  //Serial.println("\nconnected!");
   digitalWrite(PWR_LED, LOW);
   
   mqtt_client.subscribe(down_topic);
@@ -239,7 +247,7 @@ void message_received(char* topic, byte* payload, unsigned int length)
     memcpy(decoded_payload, payload, length);
     decoded_payload[length] = '\0'; //add \0 because payload dont have \0
 
-    Serial.println(decoded_payload);
+    //Serial.println(decoded_payload);
     if (!strcmp(decoded_payload, "TOGGLE_FLASH"))
     {   
         flash_state = !flash_state;
@@ -253,6 +261,35 @@ void message_received(char* topic, byte* payload, unsigned int length)
     else if (!strcmp(decoded_payload, "RESET")) {
         reset_flag = true;
     }
+
+    else if (!strcmp(decoded_payload, "INCR_QUALITY")) {
+      if (++frame_quality == 63 + 1) {
+        frame_quality = 10;
+      }
+      frame_quality_update_flag = true;
+    }
+
+    else if (!strcmp(decoded_payload, "DECR_QUALITY")) {
+      if (--frame_quality == 10 - 1) {
+        frame_quality = 63;
+      }
+      frame_quality_update_flag = true;
+    }
+
+    else if (!strcmp(decoded_payload, "INCR_AGC")) {
+      if (++agc == 30 + 1) {
+        agc = 0;
+      }
+      agc_update_flag = true;
+    }
+
+    else if (!strcmp(decoded_payload, "DECR_AGC")) {
+      if (--agc == 0 - 1) {
+        agc = 30;
+      }
+      agc_update_flag = true;
+    }
+
     free(decoded_payload);
 }
 
@@ -274,4 +311,20 @@ void reset(bool flag) {
       WiFi.disconnect();
       ESP.restart();
     }
+}
+
+void set_frame_quality() {
+  if (frame_quality_update_flag == true) {
+    sensor_t * s = esp_camera_sensor_get();
+    s->set_quality(s, frame_quality);
+    frame_quality_update_flag = false;
+  }
+}
+
+void set_agc() {
+  if (agc_update_flag == true) {
+    sensor_t * s = esp_camera_sensor_get();
+    s->set_agc_gain(s, agc);
+    agc_update_flag = false;
+  }
 }

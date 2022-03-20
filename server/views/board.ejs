@@ -64,6 +64,22 @@
                 mqtt_publish("dalat_survail/esp32cam/down", "RESET");
             }
 
+            function decr_quality() {
+                mqtt_publish("dalat_survail/esp32cam/down", "DECR_QUALITY");
+            }
+
+            function incr_quality() {
+                mqtt_publish("dalat_survail/esp32cam/down", "INCR_QUALITY");
+            }
+
+            function decr_agc() {
+                mqtt_publish("dalat_survail/esp32cam/down", "DECR_AGC");
+            }
+
+            function incr_agc() {
+                mqtt_publish("dalat_survail/esp32cam/down", "INCR_AGC");
+            }
+
             function mqtt_publish(topic, msg) {
                 mqtt_client.publish(topic, msg, {
                     qos: 0,
@@ -89,6 +105,10 @@
             <button type="button" class="btn btn-primary" onclick="toggle_camera()">Play/Pause</button>
             <button type="button" class="btn btn-secondary" onclick="toggle_flash()">LED On/Off</button>
             <button type="button" class="btn btn-danger" onclick="reset_mcu()">Reset</button>
+            <button type="button" class="btn btn-success" onclick="decr_quality()">&lt; quality</button>
+            <button type="button" class="btn btn-success" onclick="incr_quality()">&gt; quality</button>
+            <button type="button" class="btn btn-info" onclick="decr_agc()">&lt; agc</button>
+            <button type="button" class="btn btn-info" onclick="incr_agc()">&gt; agc</button>
         </div>
 
         <div>
