@@ -2,6 +2,24 @@ const fs = require('fs');
 const common = JSON.parse(fs.readFileSync(`${__dirname  }/../common.json`));
 const {Pool} = require("pg");
 
+//change time here
+const from = {
+    'yyyy': '2022',
+    'mm': '03',
+    'dd': '20',
+    'hh': '00',
+    'min': '00',
+    'ss': '00'
+}
+
+const to = {
+    'yyyy': '2022',
+    'mm': '03',
+    'dd': '24',
+    'hh': '23',
+    'min': '59',
+    'ss': '59'
+}
 
 const db_pool = new Pool({
     user: common["PG_USERNAME"],
@@ -29,7 +47,7 @@ function extract(from_yyyy, from_mm, from_dd, from_hh, from_min, from_ss, to_yyy
 }
 
 console.log(`querying...`);
-extract('2022', '03', '21', '02', '01', '00', '2022', '03', '21', '02', '05', '00')
+extract(from['yyyy'], from['mm'], from['dd'], from['hh'], from['min'], from['ss'], to['yyyy'], to['mm'], to['dd'], to['hh'], to['min'], to['ss'])
 .then((frames) => {
     let dir_name = `${__dirname}/extract/${Date.now()}`;
     if (!fs.existsSync(dir_name)) {

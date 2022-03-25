@@ -7,6 +7,7 @@ exports.boardProcessing = async (req, res, next) => {
             res.render('board', {
                 "MQTT_HOST": common['MQTT_HOST'],
                 "MQTT_PORT": common['MQTT_WS_PORT'],
+                "MQTT_CLIENTID": req.session.uuid,
                 "MQTT_USERNAME": common['MQTT_USERNAME'],
                 "MQTT_PASSWORD": common['MQTT_PASSWORD']
             })
