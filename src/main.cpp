@@ -53,10 +53,15 @@ PubSubClient mqtt_client(wifi_client);
 #define PCLK_GPIO_NUM     22
 
 bool camera_state = true;
+framesize_t frame_size_arr[] = {FRAMESIZE_QVGA, FRAMESIZE_CIF, FRAMESIZE_VGA, FRAMESIZE_SVGA, FRAMESIZE_XGA, FRAMESIZE_SXGA, FRAMESIZE_UXGA}; //QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+int frame_size_idx = 2;
+bool frame_size_update_flag = false;
 int frame_quality = 17;
 bool frame_quality_update_flag = false;
 int agc = 5;
 bool agc_update_flag = false;
+int brightness = 0;
+bool brightness_update_flag = false;
 
 void camera_init();
 void wifi_connect();
@@ -70,6 +75,8 @@ void take_frame_and_send();
 void reset(bool flag);
 void set_frame_quality();
 void set_agc();
+void set_brightness();
+void set_frame_size();
 
 void setup() {
     //Serial.begin(115200);
@@ -90,8 +97,10 @@ void loop() {
     take_frame_and_send();
     toggle_flash();
     reset(reset_flag);
+    set_frame_size();
     set_frame_quality();
     set_agc();
+    set_brightness();
 }
 
 void take_frame_and_send() {
@@ -135,7 +144,7 @@ void camera_init()
     // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
     //                      for larger pre-allocated frame buffer.
     if(psramFound()){
-        config.frame_size = FRAMESIZE_VGA; //FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+        config.frame_size = frame_size_arr[frame_size_idx]; //FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
         config.jpeg_quality = frame_quality; //Quality of JPEG output. 0-63 lower means higher quality
         config.fb_count = 2;
     } else {
@@ -148,19 +157,19 @@ void camera_init()
     if (err != ESP_OK)
     {
         //Serial.printf("Camera init failed with error 0x%x", err);
-        //reset(true);
+        reset(true);
     }
 
     //frame settings
     sensor_t * s = esp_camera_sensor_get();
-    s->set_brightness(s, 1);     // -2 to 2
+    s->set_brightness(s, brightness);     // -2 to 2
     //s->set_contrast(s, 0);       // -2 to 2
     //s->set_saturation(s, 0);     // -2 to 2
     //s->set_special_effect(s, 2); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
     //s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
     //s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
-    //s->set_wb_mode(s, 0);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-    //s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
+    //s->set_wb_mode(s, 1);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
     //s->set_aec2(s, 0);           // 0 = disable , 1 = enable
     //s->set_ae_level(s, 0);       // -2 to 2
     //s->set_aec_value(s, 0);    // 0 to 1200
@@ -262,6 +271,20 @@ void message_received(char* topic, byte* payload, unsigned int length)
         reset_flag = true;
     }
 
+    else if (!strcmp(decoded_payload, "INCR_FSIZE")) {
+      if (++frame_size_idx == 6 + 1) {
+        frame_size_idx = 0;
+      }
+      frame_size_update_flag = true;
+    }
+
+    else if (!strcmp(decoded_payload, "DECR_FSIZE")) {
+      if (--frame_size_idx == 0 - 1) {
+        frame_size_idx = 6;
+      }
+      frame_size_update_flag = true;
+    }
+
     else if (!strcmp(decoded_payload, "INCR_QUALITY")) {
       if (++frame_quality == 63 + 1) {
         frame_quality = 10;
@@ -288,6 +311,20 @@ void message_received(char* topic, byte* payload, unsigned int length)
         agc = 30;
       }
       agc_update_flag = true;
+    }
+
+    else if (!strcmp(decoded_payload, "INCR_BRIGHTNESS")) {
+      if (++brightness == 2 + 1) {
+        brightness = -2;
+      }
+      brightness_update_flag = true;
+    }
+
+    else if (!strcmp(decoded_payload, "DECR_BRIGHTNESS")) {
+      if (--brightness == -2 - 1) {
+        brightness = 2;
+      }
+      brightness_update_flag = true;
     }
 
     free(decoded_payload);
@@ -326,5 +363,21 @@ void set_agc() {
     sensor_t * s = esp_camera_sensor_get();
     s->set_agc_gain(s, agc);
     agc_update_flag = false;
+  }
+}
+
+void set_brightness() {
+  if (brightness_update_flag == true) {
+    sensor_t * s = esp_camera_sensor_get();
+    s->set_brightness(s, brightness);
+    brightness_update_flag = false;
+  }
+}
+
+void set_frame_size() {
+  if (frame_size_update_flag == true) {
+    sensor_t * s = esp_camera_sensor_get();
+    s->set_framesize(s, frame_size_arr[frame_size_idx]);
+    frame_size_update_flag = false;
   }
 }

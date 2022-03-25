@@ -29,7 +29,7 @@ function extract(from_yyyy, from_mm, from_dd, from_hh, from_min, from_ss, to_yyy
 }
 
 console.log(`querying...`);
-extract('2022', '03', '20', '21', '30', '00', '2022', '03', '20', '21', '30', '30')
+extract('2022', '03', '21', '02', '01', '00', '2022', '03', '21', '02', '05', '00')
 .then((frames) => {
     let dir_name = `${__dirname}/extract/${Date.now()}`;
     if (!fs.existsSync(dir_name)) {

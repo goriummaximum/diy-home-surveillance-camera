@@ -64,6 +64,14 @@
                 mqtt_publish("dalat_survail/esp32cam/down", "RESET");
             }
 
+            function decr_fsize() {
+                mqtt_publish("dalat_survail/esp32cam/down", "DECR_FSIZE");
+            }
+
+            function incr_fsize() {
+                mqtt_publish("dalat_survail/esp32cam/down", "INCR_FSIZE");
+            }
+
             function decr_quality() {
                 mqtt_publish("dalat_survail/esp32cam/down", "DECR_QUALITY");
             }
@@ -78,6 +86,14 @@
 
             function incr_agc() {
                 mqtt_publish("dalat_survail/esp32cam/down", "INCR_AGC");
+            }
+
+            function decr_brightness() {
+                mqtt_publish("dalat_survail/esp32cam/down", "DECR_BRIGHTNESS");
+            }
+
+            function incr_brightness() {
+                mqtt_publish("dalat_survail/esp32cam/down", "INCR_BRIGHTNESS");
             }
 
             function mqtt_publish(topic, msg) {
@@ -105,10 +121,14 @@
             <button type="button" class="btn btn-primary" onclick="toggle_camera()">Play/Pause</button>
             <button type="button" class="btn btn-secondary" onclick="toggle_flash()">LED On/Off</button>
             <button type="button" class="btn btn-danger" onclick="reset_mcu()">Reset</button>
+            <button type="button" class="btn btn-success" onclick="decr_fsize()">&lt; size</button>
+            <button type="button" class="btn btn-success" onclick="incr_fsize()">&gt; size</button>
             <button type="button" class="btn btn-success" onclick="decr_quality()">&lt; quality</button>
             <button type="button" class="btn btn-success" onclick="incr_quality()">&gt; quality</button>
             <button type="button" class="btn btn-info" onclick="decr_agc()">&lt; agc</button>
             <button type="button" class="btn btn-info" onclick="incr_agc()">&gt; agc</button>
+            <button type="button" class="btn btn-info" onclick="decr_brightness()">&lt; brightness</button>
+            <button type="button" class="btn btn-info" onclick="incr_brightness()">&gt; brightness</button>
         </div>
 
         <div>
