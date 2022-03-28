@@ -1,5 +1,5 @@
 const fs = require('fs');
-const crypto = require('crypto');
+const crypto = require('crypto').webcrypto;
 const common = JSON.parse(fs.readFileSync(`${__dirname}/../common.json`));
 
 function randomize_uuid() {
