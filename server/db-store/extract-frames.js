@@ -17,15 +17,18 @@ const to = {
     'yyyy': '2022',
     'mm': '03',
     'dd': '27',
-    'hh': '23',
+    'hh': '59',
     'min': '59',
-    'ss': '59'
+    'ss': '00'
 }
 
 const batch_size = 10000;
 
 let from_unix_timestamp = new Date(`${from['yyyy']}-${from['mm']}-${from['dd']} ${from['hh']}:${from['min']}:${from['ss']}.000`).getTime();
 let to_unix_timestamp = new Date(`${to['yyyy']}-${to['mm']}-${to['dd']} ${to['hh']}:${to['min']}:${to['ss']}.000`).getTime();
+
+console.log(`from ${time_converter(from_unix_timestamp)}`);
+console.log(`to ${time_converter(to_unix_timestamp)}`);
 
 const db_pool = new Pool({
     user: common["PG_USERNAME"],
@@ -40,11 +43,13 @@ function time_converter(UNIX_timestamp) {
     return `${t.getDate()}-${t.getMonth()+1}-${t.getFullYear()} ${t.getHours()}:${t.getMinutes()}:${t.getSeconds()}.${t.getMilliseconds()}`;
 }
 
-function cursor_read(cursor, batch_size, dir_name) {
+
+function cursor_read(client, cursor, batch_size, dir_name) {
     cursor.read(batch_size, (err, rows) => {
         if (rows.length == 0) {
             console.log("finish!!!");
             cursor.close();
+            client.end();
         }
 
         else {
@@ -54,10 +59,11 @@ function cursor_read(cursor, batch_size, dir_name) {
                 console.log(`'${date}.jpg' saved`);
             })
 
-            cursor_read(cursor, batch_size, dir_name);
+            cursor_read(client, cursor, batch_size, dir_name);
         }
     });
 }
+
 
 async function extract() {
     let dir_name = `${__dirname}/extract/${Date.now()}`;
@@ -75,7 +81,7 @@ async function extract() {
         [from_unix_timestamp, to_unix_timestamp]
     ));
 
-    cursor_read(cursor, batch_size, dir_name);
+    cursor_read(client, cursor, batch_size, dir_name);
 }
 
 extract();
